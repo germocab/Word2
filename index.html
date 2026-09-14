@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Notes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#707a3d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Notes">
+<link rel="manifest" href='data:application/manifest+json,{"name":"Notes","short_name":"Notes","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%23707a3d","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%23707a3d%27/%3E%3Ctext x=%2750%27 y=%2765%27 font-size=%2752%27 font-family=%27sans-serif%27 fill=%27%23ffffff%27 text-anchor=%27middle%27%3EN%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}'>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%23707a3d%27/%3E%3Ctext x=%2750%27 y=%2765%27 font-size=%2752%27 font-family=%27sans-serif%27 fill=%27%23ffffff%27 text-anchor=%27middle%27%3EN%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#ffffff;
+    --bg-sidebar:rgba(250,250,250,.72);
+    --bg-card:#ffffff;
+    --border:#e6e6e6;
+    --text:#1f1f1f;
+    --text-dim:#8a8a8a;
+    --text-mid:#4d4d4d;
+    --hover:#f0f0f0;
+    --active:#e4e8d9;
+    --accent:#707a3d;
+    --accent-text:#ffffff;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.03);
+    --shadow-md:0 4px 12px rgba(0,0,0,.06);
+    --shadow-lg:0 10px 30px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.04);
+    --shadow-xl:0 16px 36px rgba(0,0,0,.14), 0 2px 5px rgba(0,0,0,.06);
+  }
+  html[data-theme="dark"]{
+    --bg:#1c1c1c;
+    --bg-sidebar:rgba(32,32,32,.68);
+    --bg-card:#262626;
+    --border:#333333;
+    --text:#eeeeee;
+    --text-dim:#8f8f8f;
+    --text-mid:#b8b8b8;
+    --hover:#2c2c2c;
+    --active:#3a3f2a;
+    --accent:#8ba350;
+    --accent-text:#1c1c1c;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.25);
+    --shadow-md:0 4px 14px rgba(0,0,0,.35);
+    --shadow-lg:0 10px 30px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.3);
+    --shadow-xl:0 16px 36px rgba(0,0,0,.5), 0 2px 5px rgba(0,0,0,.3);
+  }
+  html[data-theme="tinted"]{
+    --bg:#1f1611;
+    --bg-sidebar:rgba(36,26,19,.7);
+    --bg-card:#2b2016;
+    --border:#3d2e1f;
+    --text:#f3e3d1;
+    --text-dim:#a3846a;
+    --text-mid:#d3b596;
+    --hover:#332419;
+    --active:#4a3a1e;
+    --accent:#c98a3f;
+    --accent-text:#1f1611;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+    --shadow-md:0 4px 14px rgba(20,10,0,.4);
+    --shadow-lg:0 10px 30px rgba(20,10,0,.5), 0 1px 3px rgba(0,0,0,.3);
+    --shadow-xl:0 16px 36px rgba(20,10,0,.55), 0 2px 5px rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box;}
+  :root{ --ease:cubic-bezier(.22,1,.36,1); --ease-fast:cubic-bezier(.4,0,.2,1); }
+  html,body{
+    margin:0; padding:0; height:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--text);
+    background:var(--bg);
+    transition:background .2s ease, color .2s ease;
+  }
+  #app{
+    position:relative;
+    height:100vh;
+    width:100vw;
+    background:var(--bg);
+    overflow:hidden;
+  }
+
+  /* Sidebar wrap — draggable floating panel */
+  #sidebar-wrap{
+    position:fixed;
+    top:16px;
+    left:16px;
+    z-index:20;
+  }
+  #sidebar-wrap.dragging #sidebar{ transition:none; }
+  #sidebar-wrap.dragging #sidebar-collapsed-view{ transition:none; }
+
+  #sidebar{
+    width:340px;
+    height:min(760px, calc(100vh - 32px));
+    background:var(--bg-sidebar);
+    backdrop-filter:blur(22px) saturate(1.4);
+    -webkit-backdrop-filter:blur(22px) saturate(1.4);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow-lg);
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    transform-origin:top left;
+    transition:transform .3s var(--ease), opacity .22s var(--ease);
+  }
+  #sidebar-wrap.collapsed #sidebar{
+    transform:scale(.94);
+    opacity:0;
+    pointer-events:none;
+    position:absolute;
+    top:0; left:0;
+  }
+  #sidebar-collapsed-view{
+    display:none;
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    align-items:center;
+    justify-content:center;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    box-shadow:var(--shadow-md);
+    color:var(--text-mid);
+    cursor:pointer;
+    transform:scale(.9);
+    opacity:0;
+    transition:transform .3s var(--ease), opacity .22s var(--ease), background .15s ease, color .15s ease;
+  }
+  #sidebar-collapsed-view:hover{ background:var(--hover); color:var(--text); }
+  #sidebar-collapsed-view svg{ width:18px; height:18px; }
+  #sidebar-wrap.collapsed #sidebar-collapsed-view{
+    display:flex;
+    transform:scale(1);
+    opacity:1;
+  }
+
+  #sidebar-drag-handle{
+    width:16px;
+    height:26px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:grab;
+    color:var(--text-dim);
+    font-size:13px;
+    letter-spacing:-2px;
+    border-radius:6px;
+    flex-shrink:0;
+    margin-right:2px;
+  }
+  #sidebar-drag-handle:hover{ color:var(--text-mid); }
+  #sidebar-drag-handle:active{ cursor:grabbing; }
+
+  #sidebar-header{
+    padding:14px 14px 8px 10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  #sidebar-header h1{
+    font-size:13px;
+    font-weight:600;
+    color:var(--text-mid);
+    letter-spacing:.02em;
+    margin:0;
+    text-transform:uppercase;
+    flex:1;
+  }
+  #sidebar-header-actions{
+    display:flex;
+    align-items:center;
+    gap:2px;
+    flex-shrink:0;
+  }
+  #collapse-btn, #new-btn{
+    border:none;
+    background:none;
+    cursor:pointer;
+    color:var(--text-mid);
+    font-size:15px;
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:background .15s ease, color .15s ease;
+  }
+  #collapse-btn:hover, #new-btn:hover{ background:var(--hover); color:var(--text); }
+
+  #search-box{
+    margin:4px 14px 10px 14px;
+  }
+  #search-box input{
+    width:100%;
+    padding:7px 12px;
+    font-size:13px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    background:var(--bg-card);
+    color:var(--text);
+    outline:none;
+  }
+  #search-box input:focus{ border-color:var(--accent); }
+
+  #doc-list{
+    flex:1;
+    overflow-y:auto;
+    padding:2px 12px 14px 12px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    align-content:start;
+  }
+  .doc-item{
+    padding:10px 10px;
+    border-radius:12px;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    position:relative;
+    background:var(--bg-card);
+    border:1px solid transparent;
+    box-shadow:var(--shadow-sm);
+    transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    min-height:96px;
+  }
+  .doc-item:hover{
+    border-color:var(--border);
+    box-shadow:var(--shadow-md);
+    transform:translateY(-1px);
+  }
+  .doc-item.active{
+    background:var(--active);
+    border-color:var(--accent);
+  }
+  .doc-title{
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    padding-right:14px;
+  }
+  .pin-badge{
+    color:var(--accent);
+    margin-right:5px;
+    display:inline-flex;
+    vertical-align:-1px;
+  }
+  #home-state{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    overflow-y:auto;
+    padding:90px 40px 60px;
+  }
+  #home-state.hidden{ display:none; }
+  #options-wrap{
+    position:fixed;
+    top:16px;
+    right:16px;
+    z-index:30;
+  }
+  #options-btn{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    color:var(--text-mid);
+    height:34px;
+    padding:0 14px;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:12.5px;
+    font-family:inherit;
+    box-shadow:var(--shadow-sm);
+    transition:background .12s ease, color .12s ease;
+  }
+  #options-btn svg{ width:15px; height:15px; }
+  #options-btn:hover{ background:var(--hover); color:var(--text); }
+  #options-btn.active{ background:var(--accent); color:var(--accent-text); }
+  #options-menu{
+    position:absolute;
+    top:42px;
+    right:0;
+    min-width:168px;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow-lg);
+    padding:6px;
+    display:flex;
+    flex-direction:column;
+    gap:1px;
+    transform-origin:top right;
+    transform:scale(.92) translateY(-4px);
+    opacity:0;
+    pointer-events:none;
+    transition:transform .18s var(--ease), opacity .14s ease;
+  }
+  #options-menu.open{
+    transform:scale(1) translateY(0);
+    opacity:1;
+    pointer-events:auto;
+  }
+  #home-inner{
+    width:100%;
+    max-width:760px;
+  }
+  #home-greeting{
+    font-size:30px;
+    font-weight:600;
+    letter-spacing:-.01em;
+    margin:0 0 4px;
+  }
+  #home-subtitle{
+    color:var(--text-dim);
+    font-size:14.5px;
+    margin:0 0 32px;
+  }
+  #home-new-btn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    border:1px dashed var(--border);
+    background:var(--bg-card);
+    color:var(--text-mid);
+    border-radius:12px;
+    padding:16px 18px;
+    font-size:14.5px;
+    cursor:pointer;
+    width:100%;
+    margin-bottom:36px;
+    box-shadow:var(--shadow-sm);
+    transition:border-color .15s var(--ease-fast), background .15s var(--ease-fast), color .15s var(--ease-fast);
+  }
+  #home-new-btn:hover{
+    border-color:var(--accent);
+    color:var(--text);
+    background:var(--hover);
+  }
+  #home-new-btn .plus-circle{
+    width:26px; height:26px;
+    border-radius:50%;
+    background:var(--accent);
+    color:var(--accent-text);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+    flex-shrink:0;
+  }
+  .home-section-title{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--text-dim);
+    font-weight:600;
+    margin:0 0 14px;
+  }
+  #home-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+    gap:14px;
+  }
+  .home-card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    cursor:pointer;
+    box-shadow:var(--shadow-sm);
+    transition:transform .15s var(--ease-fast), box-shadow .15s var(--ease-fast), border-color .15s var(--ease-fast);
+    display:flex;
+    flex-direction:column;
+    min-height:104px;
+  }
+  .home-card:hover{
+    transform:translateY(-2px);
+    box-shadow:var(--shadow-md);
+    border-color:var(--accent);
+  }
+  .home-card-title{
+    font-weight:600;
+    font-size:14.5px;
+    margin-bottom:6px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .home-card-preview{
+    color:var(--text-dim);
+    font-size:12.5px;
+    line-height:1.45;
+    flex:1;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .home-card-meta{
+    color:var(--text-dim);
+    font-size:11px;
+    margin-top:10px;
+  }
+  #home-empty{
+    color:var(--text-dim);
+    font-size:13.5px;
+    font-style:italic;
+  }
+  #home-btn{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:9px 10px;
+    border-radius:9px;
+    cursor:pointer;
+    font-weight:600;
+    font-size:13px;
+    font-family:inherit;
+    color:var(--text-mid);
+    background:transparent;
+    border:1px solid transparent;
+    transition:background .12s ease, color .12s ease, border-color .12s ease;
+  }
+  #home-btn svg{ width:15px; height:15px; flex-shrink:0; }
+  #home-btn:hover{ background:var(--hover); color:var(--text); }
+  #home-btn.active{
+    background:var(--active);
+    border-color:var(--accent);
+    color:var(--text);
+  }
+  .doc-preview{
+    font-size:11px;
+    color:var(--text-mid);
+    line-height:1.4;
+    display:-webkit-box;
+    -webkit-line-clamp:4;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    flex:1;
+  }
+  .doc-preview.empty{ color:var(--text-dim); font-style:italic; }
+  .doc-meta{
+    font-size:10px;
+    color:var(--text-dim);
+    margin-top:1px;
+  }
+  .doc-delete{
+    position:absolute;
+    right:6px;
+    top:7px;
+    display:none;
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    cursor:pointer;
+    font-size:11px;
+    line-height:1;
+    padding:3px 5px;
+    border-radius:5px;
+  }
+  .doc-item:hover .doc-delete{ display:block; }
+  .doc-delete:hover{ background:#ececec; color:#222; }
+
+  #sidebar-footer{
+    padding:10px 14px;
+    border-top:1px solid var(--border);
+    font-size:11px;
+    color:var(--text-dim);
+  }
+
+  /* Main */
+  #main{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    height:100vh;
+    margin-left:372px;
+    transition:margin-left .3s var(--ease);
+  }
+  #sidebar-wrap.collapsed ~ #main{
+    margin-left:0;
+  }
+  #app.home-mode #sidebar-wrap{
+    display:none;
+  }
+  #app.home-mode #main{
+    margin-left:0;
+  }
+
+  #toolbar{
+    position:fixed;
+    top:16px;
+    left:392px;
+    z-index:25;
+    display:flex;
+    align-items:center;
+    gap:2px;
+    padding:6px 8px;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:999px;
+    box-shadow:var(--shadow-lg);
+    user-select:none;
+  }
+  #toolbar.dragging{
+    box-shadow:var(--shadow-xl);
+    transition:none;
+  }
+  #toolbar.pinned #drag-handle{
+    cursor:default;
+    color:var(--border);
+  }
+  #toolbar.pinned #drag-handle:hover{ color:var(--border); }
+  #pin-btn.active{ background:var(--accent); color:var(--accent-text); }
+  #pin-btn svg, #collapse-toolbar-btn svg{ width:15px; height:15px; }
+
+  #toolbar.collapsed{
+    padding:5px;
+    gap:0;
+  }
+  #toolbar.collapsed > *:not(#toolbar-collapsed-view){
+    display:none !important;
+  }
+  #toolbar-collapsed-view{
+    display:none;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    color:var(--text-mid);
+    font-size:13px;
+    font-weight:700;
+    font-family:inherit;
+    border:none;
+    background:none;
+    user-select:none;
+  }
+  #toolbar-collapsed-view:hover{ background:var(--hover); }
+  #toolbar.collapsed #toolbar-collapsed-view{ display:flex; }
+  #toolbar-collapsed-view svg{ width:15px; height:15px; }
+  #drag-handle{
+    width:20px;
+    height:28px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:grab;
+    color:var(--text-dim);
+    font-size:13px;
+    letter-spacing:-2px;
+    border-radius:50%;
+    margin-right:2px;
+  }
+  #drag-handle:hover{ color:var(--text-mid); }
+  #drag-handle:active{ cursor:grabbing; }
+  .tool-btn{
+    border:none;
+    background:none;
+    cursor:pointer;
+    color:var(--text-mid);
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    flex-shrink:0;
+  }
+  .tool-btn:hover{ background:var(--hover); color:var(--text); }
+  .tool-btn.active{ background:var(--accent); color:var(--accent-text); }
+  .tool-sep{
+    width:1px;
+    height:20px;
+    background:var(--border);
+    margin:0 6px;
+    flex-shrink:0;
+  }
+  #font-size-wrap{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    color:var(--text-mid);
+    font-size:12.5px;
+    padding:5px 10px;
+    border-radius:999px;
+  }
+  #font-size-input{
+    border:none;
+    outline:none;
+    background:transparent;
+    color:var(--text-mid);
+    font-size:12.5px;
+    font-family:inherit;
+    width:30px;
+    text-align:right;
+  }
+  #font-size-unit{
+    color:var(--text-dim);
+    font-size:11.5px;
+    flex-shrink:0;
+  }
+
+  .view-option{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:8px 10px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:13px;
+    color:var(--text);
+    background:none;
+    border:none;
+    font-family:inherit;
+    text-align:left;
+    width:100%;
+  }
+  .view-option:hover{ background:var(--hover); }
+  .view-option.selected{ background:var(--active); font-weight:600; }
+  .view-dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    flex-shrink:0;
+    border:1px solid rgba(0,0,0,.08);
+  }
+  .view-dot.light{ background:#ffffff; }
+  .view-dot.dark{ background:#1c1c1c; }
+  .view-dot.tinted{ background:#c98a3f; }
+
+  #save-status{
+    margin-left:auto;
+    margin-right:4px;
+    width:24px;
+    height:24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--text-dim);
+    flex-shrink:0;
+  }
+  #save-status svg{ width:16px; height:16px; display:block; }
+  #save-status.saving svg{ animation:pulse 1s ease-in-out infinite; }
+  #save-status.saved{ color:var(--accent); }
+  @keyframes pulse{
+    0%,100%{ opacity:.35; transform:scale(.9); }
+    50%{ opacity:1; transform:scale(1); }
+  }
+
+  #content-row{
+    flex:1;
+    display:flex;
+    min-height:0;
+    height:100vh;
+  }
+  #editor-wrap{
+    flex:1;
+    height:100%;
+    overflow-y:auto;
+    display:flex;
+    justify-content:center;
+    min-width:0;
+  }
+  #split-pane{
+    display:none;
+    flex-direction:column;
+    flex:1;
+    min-width:0;
+    height:100%;
+    border-left:1px solid var(--border);
+    background:var(--bg);
+  }
+  #split-pane.open{ display:flex; }
+  #split-header{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+  }
+  #split-doc-select{
+    flex:1;
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    color:var(--text);
+    font-size:12.5px;
+    font-family:inherit;
+    padding:6px 10px;
+    border-radius:8px;
+    outline:none;
+  }
+  #split-close-btn{
+    border:none;
+    background:none;
+    color:var(--text-dim);
+    cursor:pointer;
+    font-size:13px;
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  #split-close-btn:hover{ background:var(--hover); color:var(--text); }
+  #split-editor{
+    flex:1;
+    overflow-y:auto;
+    padding:24px 32px 80px;
+    outline:none;
+    font-size:15px;
+    line-height:1.7;
+    color:var(--text);
+  }
+  #split-editor img{
+    max-width:100%;
+    height:auto;
+    display:block;
+    border-radius:14px;
+    margin:14px 0;
+  }
+  #editor-inner{
+    width:100%;
+    max-width:760px;
+    padding:88px 40px 120px 40px;
+  }
+  #doc-title-input{
+    width:100%;
+    border:none;
+    outline:none;
+    font-size:32px;
+    font-weight:700;
+    color:var(--text);
+    margin-bottom:14px;
+    background:transparent;
+    font-family:inherit;
+  }
+  #doc-title-input::placeholder{ color:#d0d0d0; }
+
+  #editor{
+    width:100%;
+    min-height:60vh;
+    outline:none;
+    font-size:16px;
+    line-height:1.7;
+    color:var(--text);
+  }
+  #editor:empty:before{
+    content:attr(data-placeholder);
+    color:#c9c9c9;
+  }
+  #editor img,
+  .doc-img{
+    max-width:100%;
+    height:auto;
+    display:block;
+    border-radius:14px;
+    margin:14px 0;
+    box-shadow:var(--shadow-sm);
+  }
+
+  #empty-state{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    color:var(--text-dim);
+    gap:14px;
+  }
+  #empty-state button{
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    padding:8px 16px;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:13px;
+    color:var(--text);
+  }
+  #empty-state button:hover{ background:var(--accent); color:var(--accent-text); border-color:var(--accent); }
+
+  /* Delete confirm modal */
+  #confirm-overlay,
+  #rename-overlay,
+  #export-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.28);
+    backdrop-filter:blur(2px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+  }
+  #confirm-overlay.open,
+  #rename-overlay.open,
+  #export-overlay.open{ display:flex; }
+  .modal-box{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow-xl);
+    padding:20px;
+    width:100%;
+    max-width:300px;
+  }
+  .modal-message{
+    font-size:14px;
+    color:var(--text);
+    line-height:1.5;
+    margin-bottom:16px;
+  }
+  #rename-input{
+    width:100%;
+    border:1px solid var(--border);
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+    font-family:inherit;
+    padding:9px 12px;
+    border-radius:10px;
+    outline:none;
+    margin-bottom:16px;
+  }
+  #rename-input:focus{ border-color:var(--accent); }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+  .modal-actions button{
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    color:var(--text);
+    font-size:13px;
+    padding:7px 14px;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  #confirm-cancel:hover, #rename-cancel:hover{ background:var(--hover); }
+  #rename-save{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:var(--accent-text);
+  }
+  #rename-save:hover{ opacity:.9; }
+  #confirm-delete{
+    background:#c0392b;
+    border-color:#c0392b;
+    color:#ffffff;
+  }
+  #confirm-delete:hover{ background:#a93226; border-color:#a93226; }
+
+  /* Toolbar right-click context menu */
+  #toolbar-context-menu,
+  #doc-context-menu{
+    position:fixed;
+    min-width:170px;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow-lg);
+    padding:6px;
+    display:none;
+    z-index:110;
+  }
+  #toolbar-context-menu.open,
+  #doc-context-menu.open{ display:block; }
+  #toolbar-context-menu .view-option,
+  #doc-context-menu .view-option{
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+
+  /* Master bar */
+  #master-bar{
+    position:fixed;
+    top:0; left:0; right:0;
+    height:32px;
+    display:flex;
+    align-items:center;
+    gap:2px;
+    padding:0 10px;
+    background:var(--bg-sidebar);
+    backdrop-filter:blur(18px) saturate(1.4);
+    -webkit-backdrop-filter:blur(18px) saturate(1.4);
+    border-bottom:1px solid var(--border);
+    z-index:400;
+    transform:translateY(-100%);
+    opacity:0;
+    transition:transform .16s var(--ease), opacity .14s ease;
+  }
+  #master-bar.visible{
+    transform:translateY(0);
+    opacity:1;
+  }
+  .mb-item-wrap{ position:relative; }
+  .mb-item{
+    border:none;
+    background:none;
+    cursor:pointer;
+    color:var(--text-mid);
+    font-size:12.5px;
+    font-family:inherit;
+    padding:5px 10px;
+    border-radius:7px;
+  }
+  .mb-item:hover{ background:var(--hover); color:var(--text); }
+  .mb-item.active{ background:var(--active); color:var(--text); }
+  .mb-dropdown{
+    position:absolute;
+    top:30px;
+    left:0;
+    min-width:200px;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow-lg);
+    padding:6px;
+    display:flex;
+    flex-direction:column;
+    gap:1px;
+    transform-origin:top left;
+    transform:scale(.94) translateY(-4px);
+    opacity:0;
+    pointer-events:none;
+    transition:transform .16s var(--ease), opacity .12s ease;
+  }
+  .mb-dropdown.open{
+    transform:scale(1) translateY(0);
+    opacity:1;
+    pointer-events:auto;
+  }
+  .mb-dropdown .view-option[disabled]{
+    opacity:.4;
+    cursor:default;
+    pointer-events:none;
+  }
+  .mb-sep{
+    height:1px;
+    background:var(--border);
+    margin:5px 2px;
+  }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:8px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+<div id="master-bar">
+  <div class="mb-item-wrap">
+    <button class="mb-item" data-menu="file-menu">File</button>
+    <div id="file-menu" class="mb-dropdown">
+      <button class="view-option" data-action="save">Save...</button>
+      <button class="view-option" data-action="save-as">Save as...</button>
+      <button class="view-option" data-action="duplicate">Duplicate this file</button>
+      <button class="view-option" data-action="export">Export as...</button>
+      <div class="mb-sep"></div>
+      <button class="view-option" data-action="close">Close file</button>
+    </div>
+  </div>
+  <div class="mb-item-wrap">
+    <button class="mb-item" data-menu="window-menu">Window</button>
+    <div id="window-menu" class="mb-dropdown">
+      <button class="view-option" data-action="split">Open side by side</button>
+      <button class="view-option" data-action="fullscreen">Full Screen</button>
+      <div class="mb-sep"></div>
+      <button class="view-option" data-action="reset-all">Reset all tools and bars</button>
+    </div>
+  </div>
+</div>
+<div id="app">
+  <div id="sidebar-wrap">
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <div id="sidebar-drag-handle" title="Drag to move">⠿</div>
+        <h1>Library</h1>
+        <div id="sidebar-header-actions">
+          <button id="new-btn" title="New document">+</button>
+          <button id="collapse-btn" title="Collapse sidebar">⟨</button>
+        </div>
+      </div>
+      <div id="search-box">
+        <input type="text" id="search-input" placeholder="Search...">
+      </div>
+      <div style="padding:0 10px 6px;">
+        <button id="home-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
+          Home
+        </button>
+      </div>
+      <div id="doc-list"></div>
+      <div id="sidebar-footer"><span id="doc-count">0 documents</span></div>
+    </div>
+    <button id="sidebar-collapsed-view" title="Expand library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+    </button>
+  </div>
+
+  <div id="main">
+    <div id="toolbar" style="display:none;">
+      <div id="drag-handle" title="Drag to move">⠿</div>
+      <button id="pin-btn" class="tool-btn" title="Pin toolbar in place">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path></svg>
+      </button>
+      <button id="collapse-toolbar-btn" class="tool-btn" title="Collapse toolbar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+      <button class="tool-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+      <button class="tool-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+      <button class="tool-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" data-block="H1" title="Heading 1">H1</button>
+      <button class="tool-btn" data-block="H2" title="Heading 2">H2</button>
+      <button class="tool-btn" data-block="P" title="Paragraph">¶</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" data-cmd="insertUnorderedList" title="Bullet list">•—</button>
+      <button class="tool-btn" data-cmd="insertOrderedList" title="Numbered list">1.</button>
+      <button class="tool-btn" data-block="BLOCKQUOTE" title="Quote">❝</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" id="insert-image-btn" title="Insert image">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"></rect><circle cx="9" cy="9" r="1.6" fill="currentColor" stroke="none"></circle><path d="m21 15-5.2-5.2a2 2 0 0 0-2.8 0L3 19.9"></path></svg>
+      </button>
+      <input type="file" id="image-file-input" accept="image/*" style="display:none;">
+      <div class="tool-sep"></div>
+      <div id="font-size-wrap" title="Font size">
+        <input id="font-size-input" type="text" list="font-size-options" inputmode="numeric">
+        <span id="font-size-unit">px</span>
+      </div>
+      <datalist id="font-size-options">
+        <option value="12">Small</option>
+        <option value="16">Normal</option>
+        <option value="18">Medium</option>
+        <option value="22">Large</option>
+        <option value="28">Huge</option>
+      </datalist>
+      <div class="tool-sep"></div>
+      <span id="save-status" class="saved" title="Saved">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </span>
+      <button id="toolbar-collapsed-view" title="Expand toolbar">Aa</button>
+    </div>
+
+    <div id="home-state">
+      <div id="options-wrap">
+        <button id="options-btn" title="Options">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Options</span>
+        </button>
+        <div id="options-menu">
+          <button class="view-option" data-theme="light"><span class="view-dot light"></span>Light</button>
+          <button class="view-option" data-theme="dark"><span class="view-dot dark"></span>Dark mode</button>
+          <button class="view-option" data-theme="tinted"><span class="view-dot tinted"></span>Tinted</button>
+        </div>
+      </div>
+      <div id="home-inner">
+        <div id="home-greeting"></div>
+        <div id="home-subtitle"></div>
+        <button id="home-new-btn">
+          <span class="plus-circle">+</span>
+          <span>New document</span>
+        </button>
+        <div class="home-section-title">Recent</div>
+        <div id="home-grid"></div>
+      </div>
+    </div>
+
+    <div id="content-row">
+      <div id="editor-wrap">
+        <div id="editor-inner" style="display:none;">
+          <input id="doc-title-input" placeholder="Untitled">
+          <div id="editor" contenteditable="true" data-placeholder="Start writing..."></div>
+        </div>
+      </div>
+
+      <div id="split-pane">
+        <div id="split-header">
+          <select id="split-doc-select"></select>
+          <button id="split-close-btn" title="Close split view">✕</button>
+        </div>
+        <div id="split-editor" contenteditable="true"></div>
+      </div>
+    </div>
+
+    <div id="empty-state">
+      <div>No document open</div>
+      <button id="empty-new-btn">Create your first document</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-overlay">
+  <div id="confirm-modal" class="modal-box">
+    <div id="confirm-message" class="modal-message"></div>
+    <div class="modal-actions">
+      <button id="confirm-cancel">Cancel</button>
+      <button id="confirm-delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="rename-overlay">
+  <div class="modal-box">
+    <div class="modal-message" id="rename-modal-title">Rename document</div>
+    <input id="rename-input" type="text" placeholder="Untitled">
+    <div class="modal-actions">
+      <button id="rename-cancel">Cancel</button>
+      <button id="rename-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="export-overlay">
+  <div class="modal-box">
+    <div class="modal-message">Export as...</div>
+    <div class="modal-actions" style="justify-content:stretch;flex-direction:column;gap:6px;margin-bottom:12px;">
+      <button class="view-option" data-format="html" style="justify-content:center;border:1px solid var(--border);">HTML (.html)</button>
+      <button class="view-option" data-format="text" style="justify-content:center;border:1px solid var(--border);">Plain text (.txt)</button>
+    </div>
+    <div class="modal-actions">
+      <button id="export-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="doc-context-menu">
+  <button class="view-option" data-action="download">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+    Download
+  </button>
+  <button class="view-option" data-action="rename">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+    Rename
+  </button>
+  <button class="view-option" data-action="pin">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M12 2v8.28l4.4 2.94a1 1 0 0 1 .45.87V15h-9.7v-.91a1 1 0 0 1 .45-.87L12 10.28"></path><path d="M12 17v5"></path></svg>
+    <span data-pin-label>Pin to top</span>
+  </button>
+  <button class="view-option" data-action="delete" style="color:#c0392b;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+    Delete
+  </button>
+</div>
+
+<div id="toolbar-context-menu">
+  <button id="reset-toolbar-btn" class="view-option">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+    Reset toolbar
+  </button>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'notionish_docs_v1';
+  let docs = [];
+  let activeId = null;
+  let saveTimeout = null;
+
+  const docList = document.getElementById('doc-list');
+  const docCount = document.getElementById('doc-count');
+  const searchInput = document.getElementById('search-input');
+  const editor = document.getElementById('editor');
+  const titleInput = document.getElementById('doc-title-input');
+  const editorInner = document.getElementById('editor-inner');
+  const emptyState = document.getElementById('empty-state');
+  const toolbar = document.getElementById('toolbar');
+  const saveStatus = document.getElementById('save-status');
+  const fontSizeInput = document.getElementById('font-size-input');
+  const insertImageBtn = document.getElementById('insert-image-btn');
+  const imageFileInput = document.getElementById('image-file-input');
+  const homeState = document.getElementById('home-state');
+  const homeGreeting = document.getElementById('home-greeting');
+  const homeSubtitle = document.getElementById('home-subtitle');
+  const homeGrid = document.getElementById('home-grid');
+  const homeBtn = document.getElementById('home-btn');
+  const homeNewBtn = document.getElementById('home-new-btn');
+  const appEl = document.getElementById('app');
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      docs = raw ? JSON.parse(raw) : [];
+    }catch(e){ docs = []; }
+  }
+
+  function persist(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+  }
+
+  function uid(){
+    return 'd_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  }
+
+  function formatDate(ts){
+    const d = new Date(ts);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    if(sameDay){
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+    return d.toLocaleDateString([], {month:'short', day:'numeric'});
+  }
+
+  function plainSnippet(html){
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    const text = tmp.textContent || '';
+    return text.trim().slice(0, 160);
+  }
+
+  function sortDocs(list){
+    return [...list].sort((a,b)=>{
+      const pa = a.pinned ? 1 : 0, pb = b.pinned ? 1 : 0;
+      if(pa !== pb) return pb - pa;
+      return b.updatedAt - a.updatedAt;
+    });
+  }
+
+  function renderList(filter){
+    filter = (filter||'').toLowerCase().trim();
+    const sorted = sortDocs(docs);
+    docList.innerHTML = '';
+    let visible = 0;
+    sorted.forEach(doc=>{
+      const title = doc.title || 'Untitled';
+      if(filter && !title.toLowerCase().includes(filter) && !plainSnippet(doc.content).toLowerCase().includes(filter)) return;
+      visible++;
+      const item = document.createElement('div');
+      item.className = 'doc-item' + (doc.id === activeId ? ' active' : '');
+      item.dataset.id = doc.id;
+      const preview = plainSnippet(doc.content);
+      const previewHtml = preview
+        ? `<div class="doc-preview">${escapeHtml(preview)}</div>`
+        : `<div class="doc-preview empty">No content yet</div>`;
+      const pinBadge = doc.pinned ? `<span class="pin-badge" title="Pinned">${PIN_ICON}</span>` : '';
+      item.innerHTML = `
+        <div class="doc-title">${pinBadge}${escapeHtml(title)}</div>
+        ${previewHtml}
+        <div class="doc-meta">${formatDate(doc.updatedAt)}</div>
+        <button class="doc-delete" title="Delete">✕</button>
+      `;
+      item.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('doc-delete')) return;
+        openDoc(doc.id);
+      });
+      item.querySelector('.doc-delete').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        showDeleteConfirm(title, ()=> deleteDoc(doc.id));
+      });
+      item.addEventListener('contextmenu', (e)=>{
+        e.preventDefault();
+        openDocContextMenu(e.clientX, e.clientY, doc.id);
+      });
+      docList.appendChild(item);
+    });
+    docCount.textContent = `${docs.length} document${docs.length===1?'':'s'}`;
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  const confirmOverlay = document.getElementById('confirm-overlay');
+  const confirmMessage = document.getElementById('confirm-message');
+  const confirmCancelBtn = document.getElementById('confirm-cancel');
+  const confirmDeleteBtn = document.getElementById('confirm-delete');
+  let pendingConfirmAction = null;
+
+  function showDeleteConfirm(title, onConfirm){
+    confirmMessage.textContent = `Delete "${title || 'Untitled'}"? This can't be undone.`;
+    pendingConfirmAction = onConfirm;
+    confirmOverlay.classList.add('open');
+  }
+
+  function hideDeleteConfirm(){
+    confirmOverlay.classList.remove('open');
+    pendingConfirmAction = null;
+  }
+
+  confirmCancelBtn.addEventListener('click', hideDeleteConfirm);
+  confirmDeleteBtn.addEventListener('click', ()=>{
+    if(pendingConfirmAction) pendingConfirmAction();
+    hideDeleteConfirm();
+  });
+  confirmOverlay.addEventListener('click', (e)=>{
+    if(e.target === confirmOverlay) hideDeleteConfirm();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && confirmOverlay.classList.contains('open')) hideDeleteConfirm();
+  });
+
+  const PIN_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2a1 1 0 0 1 1 1v6.28l4.4 2.94a1 1 0 0 1 .45.87V14a1 1 0 0 1-1 1h-4v6l-1 2-1-2v-6H6.15a1 1 0 0 1-1-1v-.91a1 1 0 0 1 .45-.87L10 9.28V3a1 1 0 0 1 1-1z"></path></svg>';
+
+  function createDoc(){
+    const doc = {
+      id: uid(),
+      title: '',
+      content: '',
+      fontSize: '16px',
+      pinned: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    docs.push(doc);
+    persist();
+    openDoc(doc.id);
+    renderList(searchInput.value);
+    titleInput.focus();
+  }
+
+  function deleteDoc(id){
+    docs = docs.filter(d=>d.id !== id);
+    persist();
+    if(activeId === id){
+      showHome();
+    }
+    renderList(searchInput.value);
+  }
+
+  function openDoc(id){
+    const doc = docs.find(d=>d.id === id);
+    if(!doc) return;
+    activeId = id;
+    titleInput.value = doc.title || '';
+    editor.innerHTML = doc.content || '';
+    editor.style.fontSize = doc.fontSize || '16px';
+    fontSizeInput.value = parseInt(doc.fontSize || '16px', 10) || 16;
+    editorInner.style.display = 'block';
+    toolbar.style.display = 'flex';
+    emptyState.style.display = 'none';
+    homeState.classList.add('hidden');
+    homeBtn.classList.remove('active');
+    appEl.classList.remove('home-mode');
+    renderList(searchInput.value);
+    updateActiveStates();
+  }
+
+  function showEmptyState(){
+    editorInner.style.display = 'none';
+    toolbar.style.display = 'none';
+    emptyState.style.display = 'flex';
+    homeState.classList.add('hidden');
+    homeBtn.classList.remove('active');
+    appEl.classList.remove('home-mode');
+  }
+
+  function greetingForNow(){
+    const h = new Date().getHours();
+    if(h < 5) return 'Still up?';
+    if(h < 12) return 'Good morning';
+    if(h < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  function renderHomeGrid(){
+    const sorted = sortDocs(docs).slice(0, 12);
+    homeGrid.innerHTML = '';
+    if(!sorted.length){
+      homeGrid.innerHTML = '<div id="home-empty">No documents yet — create your first one above.</div>';
+      return;
+    }
+    sorted.forEach(doc=>{
+      const title = doc.title || 'Untitled';
+      const preview = plainSnippet(doc.content);
+      const card = document.createElement('div');
+      card.className = 'home-card';
+      card.dataset.id = doc.id;
+      const pinBadge = doc.pinned ? `<span class="pin-badge" title="Pinned">${PIN_ICON}</span>` : '';
+      card.innerHTML = `
+        <div class="home-card-title">${pinBadge}${escapeHtml(title)}</div>
+        <div class="home-card-preview">${preview ? escapeHtml(preview) : '<em>No content yet</em>'}</div>
+        <div class="home-card-meta">Edited ${formatDate(doc.updatedAt)}</div>
+      `;
+      card.addEventListener('click', ()=> openDoc(doc.id));
+      card.addEventListener('contextmenu', (e)=>{
+        e.preventDefault();
+        openDocContextMenu(e.clientX, e.clientY, doc.id);
+      });
+      homeGrid.appendChild(card);
+    });
+  }
+
+  function showHome(){
+    activeId = null;
+    editorInner.style.display = 'none';
+    toolbar.style.display = 'none';
+    emptyState.style.display = 'none';
+    homeState.classList.remove('hidden');
+    appEl.classList.add('home-mode');
+    homeGreeting.textContent = greetingForNow();
+    homeSubtitle.textContent = docs.length
+      ? `You have ${docs.length} document${docs.length===1?'':'s'}.`
+      : 'Let\'s create your first document.';
+    renderHomeGrid();
+    renderList(searchInput.value);
+    homeBtn.classList.add('active');
+  }
+
+  function currentDoc(){
+    return docs.find(d=>d.id === activeId);
+  }
+
+  const ICON_SAVING = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor"></circle></svg>';
+  const ICON_SAVED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+  function scheduleSave(){
+    saveStatus.className = 'saving';
+    saveStatus.title = 'Saving...';
+    saveStatus.innerHTML = ICON_SAVING;
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(()=>{
+      const doc = currentDoc();
+      if(!doc) return;
+      doc.title = titleInput.value.trim();
+      doc.content = editor.innerHTML;
+      doc.updatedAt = Date.now();
+      persist();
+      renderList(searchInput.value);
+      saveStatus.className = 'saved';
+      saveStatus.title = 'Saved';
+      saveStatus.innerHTML = ICON_SAVED;
+    }, 350);
+  }
+
+  // Sidebar: draggable + collapsible floating panel
+  const sidebarWrap = document.getElementById('sidebar-wrap');
+  const sidebarDragHandle = document.getElementById('sidebar-drag-handle');
+  const sidebarCollapsedView = document.getElementById('sidebar-collapsed-view');
+  const collapseBtn = document.getElementById('collapse-btn');
+  const SIDEBAR_COLLAPSE_KEY = 'notionish_sidebar_collapsed';
+  const SIDEBAR_POS_KEY = 'notionish_sidebar_pos';
+  const DEFAULT_SIDEBAR_POS = { x: 16, y: 16 };
+
+  let sbDragging = false, sbDragMoved = false, sbDragOffsetX = 0, sbDragOffsetY = 0, sbDragStartX = 0, sbDragStartY = 0;
+
+  function clampSidebarPos(x, y){
+    const rect = sidebarWrap.getBoundingClientRect();
+    const maxX = window.innerWidth - rect.width - 8;
+    const maxY = window.innerHeight - rect.height - 8;
+    return {
+      x: Math.min(Math.max(x, 8), Math.max(maxX, 8)),
+      y: Math.min(Math.max(y, 8), Math.max(maxY, 8))
+    };
+  }
+  function applySidebarPos(x, y){
+    sidebarWrap.style.left = x + 'px';
+    sidebarWrap.style.top = y + 'px';
+  }
+  function loadSidebarPos(){
+    try{
+      const raw = localStorage.getItem(SIDEBAR_POS_KEY);
+      const pos = raw ? JSON.parse(raw) : DEFAULT_SIDEBAR_POS;
+      applySidebarPos(pos.x, pos.y);
+    }catch(e){
+      applySidebarPos(DEFAULT_SIDEBAR_POS.x, DEFAULT_SIDEBAR_POS.y);
+    }
+  }
+
+  function setSidebarCollapsed(collapsed){
+    sidebarWrap.classList.toggle('collapsed', collapsed);
+    localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0');
+  }
+  collapseBtn.addEventListener('click', ()=> setSidebarCollapsed(true));
+  setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1');
+
+  function startSidebarDrag(e){
+    sbDragStartX = e.clientX;
+    sbDragStartY = e.clientY;
+    sbDragMoved = false;
+    const rect = sidebarWrap.getBoundingClientRect();
+    sbDragOffsetX = e.clientX - rect.left;
+    sbDragOffsetY = e.clientY - rect.top;
+    sbDragging = true;
+    sidebarWrap.classList.add('dragging');
+  }
+
+  sidebarDragHandle.addEventListener('mousedown', (e)=>{
+    e.preventDefault();
+    startSidebarDrag(e);
+  });
+
+  sidebarCollapsedView.addEventListener('mousedown', (e)=>{
+    startSidebarDrag(e);
+  });
+  sidebarCollapsedView.addEventListener('click', ()=>{
+    if(!sbDragMoved) setSidebarCollapsed(false);
+  });
+
+  document.addEventListener('mousemove', (e)=>{
+    if(!sbDragging) return;
+    if(Math.abs(e.clientX - sbDragStartX) > 3 || Math.abs(e.clientY - sbDragStartY) > 3){
+      sbDragMoved = true;
+    }
+    const { x, y } = clampSidebarPos(e.clientX - sbDragOffsetX, e.clientY - sbDragOffsetY);
+    applySidebarPos(x, y);
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(!sbDragging) return;
+    sbDragging = false;
+    sidebarWrap.classList.remove('dragging');
+    const rect = sidebarWrap.getBoundingClientRect();
+    localStorage.setItem(SIDEBAR_POS_KEY, JSON.stringify({ x: rect.left, y: rect.top }));
+  });
+  window.addEventListener('resize', ()=>{
+    const rect = sidebarWrap.getBoundingClientRect();
+    const { x, y } = clampSidebarPos(rect.left, rect.top);
+    applySidebarPos(x, y);
+  });
+
+  loadSidebarPos();
+
+  document.addEventListener('keydown', (e)=>{
+    if((e.metaKey || e.ctrlKey) && e.key === '\\'){
+      e.preventDefault();
+      setSidebarCollapsed(!sidebarWrap.classList.contains('collapsed'));
+    }
+  });
+
+  // Floating draggable toolbar
+  const TOOLBAR_POS_KEY = 'notionish_toolbar_pos';
+  const TOOLBAR_PINNED_KEY = 'notionish_toolbar_pinned';
+  const TOOLBAR_COLLAPSED_KEY = 'notionish_toolbar_collapsed';
+  const dragHandle = document.getElementById('drag-handle');
+  const pinBtn = document.getElementById('pin-btn');
+  const collapseToolbarBtn = document.getElementById('collapse-toolbar-btn');
+  const collapsedView = document.getElementById('toolbar-collapsed-view');
+  let dragOffsetX = 0, dragOffsetY = 0, dragging = false, dragMoved = false, dragStartX = 0, dragStartY = 0;
+  let toolbarPinned = false;
+
+  function clampToolbarPos(x, y){
+    const rect = toolbar.getBoundingClientRect();
+    const maxX = window.innerWidth - rect.width - 8;
+    const maxY = window.innerHeight - rect.height - 8;
+    return {
+      x: Math.min(Math.max(x, 8), Math.max(maxX, 8)),
+      y: Math.min(Math.max(y, 8), Math.max(maxY, 8))
+    };
+  }
+
+  function applyToolbarPos(x, y){
+    toolbar.style.left = x + 'px';
+    toolbar.style.top = y + 'px';
+  }
+
+  function loadToolbarPos(){
+    try{
+      const raw = localStorage.getItem(TOOLBAR_POS_KEY);
+      if(raw){
+        const pos = JSON.parse(raw);
+        applyToolbarPos(pos.x, pos.y);
+      }
+    }catch(e){}
+  }
+
+  function startDrag(e){
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragMoved = false;
+    if(toolbarPinned) return;
+    const rect = toolbar.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    dragging = true;
+    toolbar.classList.add('dragging');
+  }
+
+  dragHandle.addEventListener('mousedown', (e)=>{
+    e.preventDefault();
+    startDrag(e);
+  });
+
+  collapsedView.addEventListener('mousedown', (e)=>{
+    startDrag(e);
+  });
+
+  collapsedView.addEventListener('click', ()=>{
+    if(!dragMoved){
+      setToolbarCollapsed(false);
+    }
+  });
+
+  document.addEventListener('mousemove', (e)=>{
+    if(!dragging) return;
+    if(Math.abs(e.clientX - dragStartX) > 3 || Math.abs(e.clientY - dragStartY) > 3){
+      dragMoved = true;
+    }
+    const { x, y } = clampToolbarPos(e.clientX - dragOffsetX, e.clientY - dragOffsetY);
+    applyToolbarPos(x, y);
+  });
+
+  document.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging = false;
+    toolbar.classList.remove('dragging');
+    const rect = toolbar.getBoundingClientRect();
+    localStorage.setItem(TOOLBAR_POS_KEY, JSON.stringify({ x: rect.left, y: rect.top }));
+  });
+
+  window.addEventListener('resize', ()=>{
+    const rect = toolbar.getBoundingClientRect();
+    const { x, y } = clampToolbarPos(rect.left, rect.top);
+    applyToolbarPos(x, y);
+  });
+
+  loadToolbarPos();
+
+  // Toolbar right-click context menu
+  const DEFAULT_TOOLBAR_POS = { x: 392, y: 16 };
+  const toolbarContextMenu = document.getElementById('toolbar-context-menu');
+  const resetToolbarBtn = document.getElementById('reset-toolbar-btn');
+
+  function openToolbarContextMenu(clientX, clientY){
+    toolbarContextMenu.classList.add('open');
+    const menuRect = toolbarContextMenu.getBoundingClientRect();
+    const x = Math.min(clientX, window.innerWidth - menuRect.width - 8);
+    const y = Math.min(clientY, window.innerHeight - menuRect.height - 8);
+    toolbarContextMenu.style.left = Math.max(x, 8) + 'px';
+    toolbarContextMenu.style.top = Math.max(y, 8) + 'px';
+  }
+  function closeToolbarContextMenu(){
+    toolbarContextMenu.classList.remove('open');
+  }
+
+  toolbar.addEventListener('contextmenu', (e)=>{
+    e.preventDefault();
+    openToolbarContextMenu(e.clientX, e.clientY);
+  });
+
+  document.addEventListener('click', (e)=>{
+    if(!toolbarContextMenu.contains(e.target)) closeToolbarContextMenu();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') closeToolbarContextMenu();
+  });
+
+  resetToolbarBtn.addEventListener('click', ()=>{
+    setToolbarPinned(false);
+    setToolbarCollapsed(false);
+    applyToolbarPos(DEFAULT_TOOLBAR_POS.x, DEFAULT_TOOLBAR_POS.y);
+    localStorage.setItem(TOOLBAR_POS_KEY, JSON.stringify(DEFAULT_TOOLBAR_POS));
+    closeToolbarContextMenu();
+  });
+
+  // Document right-click context menu (Download / Rename / Pin / Delete)
+  const docContextMenu = document.getElementById('doc-context-menu');
+  const pinLabel = docContextMenu.querySelector('[data-pin-label]');
+  let contextDocId = null;
+
+  function openDocContextMenu(clientX, clientY, docId){
+    contextDocId = docId;
+    const doc = docs.find(d=>d.id === docId);
+    pinLabel.textContent = doc && doc.pinned ? 'Unpin' : 'Pin to top';
+    docContextMenu.classList.add('open');
+    const menuRect = docContextMenu.getBoundingClientRect();
+    const x = Math.min(clientX, window.innerWidth - menuRect.width - 8);
+    const y = Math.min(clientY, window.innerHeight - menuRect.height - 8);
+    docContextMenu.style.left = Math.max(x, 8) + 'px';
+    docContextMenu.style.top = Math.max(y, 8) + 'px';
+  }
+  function closeDocContextMenu(){
+    docContextMenu.classList.remove('open');
+    contextDocId = null;
+  }
+
+  document.addEventListener('click', (e)=>{
+    if(!docContextMenu.contains(e.target)) closeDocContextMenu();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') closeDocContextMenu();
+  });
+
+  function downloadDoc(id){
+    const doc = docs.find(d=>d.id === id);
+    if(!doc) return;
+    const title = doc.title || 'Untitled';
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title></head><body>`
+      + `<h1>${escapeHtml(title)}</h1>${doc.content || ''}</body></html>`;
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[\\/:*?"<>|]/g, '').trim() || 'untitled'}.html`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function togglePin(id){
+    const doc = docs.find(d=>d.id === id);
+    if(!doc) return;
+    doc.pinned = !doc.pinned;
+    persist();
+    renderList(searchInput.value);
+    renderHomeGrid();
+  }
+
+  const renameOverlay = document.getElementById('rename-overlay');
+  const renameInput = document.getElementById('rename-input');
+  const renameCancelBtn = document.getElementById('rename-cancel');
+  const renameSaveBtn = document.getElementById('rename-save');
+  const renameModalTitle = document.getElementById('rename-modal-title');
+  let renamingDocId = null;
+  let renameMode = 'rename';
+  let renameSourceContent = null;
+
+  function openRenameModal(id, contentOverride){
+    const doc = docs.find(d=>d.id === id);
+    if(!doc) return;
+    renamingDocId = id;
+    renameSourceContent = contentOverride !== undefined ? contentOverride : null;
+    if(renameMode === 'saveas'){
+      renameModalTitle.textContent = 'Save as...';
+      renameInput.value = (doc.title || 'Untitled') + ' (copy)';
+    } else {
+      renameModalTitle.textContent = 'Rename document';
+      renameInput.value = doc.title || '';
+    }
+    renameOverlay.classList.add('open');
+    setTimeout(()=>{ renameInput.focus(); renameInput.select(); }, 0);
+  }
+  function closeRenameModal(){
+    renameOverlay.classList.remove('open');
+    renamingDocId = null;
+    renameMode = 'rename';
+    renameSourceContent = null;
+  }
+  function saveRename(){
+    if(renameMode === 'saveas'){
+      const src = docs.find(d=>d.id === renamingDocId);
+      if(src){
+        const newDoc = {
+          ...src,
+          id: uid(),
+          title: renameInput.value.trim() || 'Untitled',
+          content: renameSourceContent !== null ? renameSourceContent : src.content,
+          pinned: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        docs.push(newDoc);
+        persist();
+        renderList(searchInput.value);
+        renderHomeGrid();
+        openDoc(newDoc.id);
+      }
+      closeRenameModal();
+      return;
+    }
+    const doc = docs.find(d=>d.id === renamingDocId);
+    if(doc){
+      doc.title = renameInput.value.trim();
+      doc.updatedAt = Date.now();
+      persist();
+      if(doc.id === activeId) titleInput.value = doc.title;
+      renderList(searchInput.value);
+      renderHomeGrid();
+    }
+    closeRenameModal();
+  }
+  renameCancelBtn.addEventListener('click', closeRenameModal);
+  renameSaveBtn.addEventListener('click', saveRename);
+  renameInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); saveRename(); }
+    if(e.key === 'Escape'){ e.preventDefault(); closeRenameModal(); }
+  });
+  renameOverlay.addEventListener('click', (e)=>{
+    if(e.target === renameOverlay) closeRenameModal();
+  });
+
+  docContextMenu.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-action]');
+    if(!btn || !contextDocId) return;
+    const id = contextDocId;
+    const action = btn.dataset.action;
+    closeDocContextMenu();
+    if(action === 'download') downloadDoc(id);
+    else if(action === 'rename') openRenameModal(id);
+    else if(action === 'pin') togglePin(id);
+    else if(action === 'delete'){
+      const doc = docs.find(d=>d.id === id);
+      showDeleteConfirm(doc ? doc.title : '', ()=> deleteDoc(id));
+    }
+  });
+
+  // Pin toolbar
+  function setToolbarPinned(pinned){
+    toolbarPinned = pinned;
+    toolbar.classList.toggle('pinned', pinned);
+    pinBtn.classList.toggle('active', pinned);
+    pinBtn.title = pinned ? 'Unpin toolbar' : 'Pin toolbar in place';
+    localStorage.setItem(TOOLBAR_PINNED_KEY, pinned ? '1' : '0');
+  }
+  pinBtn.addEventListener('click', ()=> setToolbarPinned(!toolbarPinned));
+  setToolbarPinned(localStorage.getItem(TOOLBAR_PINNED_KEY) === '1');
+
+  // Collapse toolbar
+  function setToolbarCollapsed(collapsed){
+    toolbar.classList.toggle('collapsed', collapsed);
+    localStorage.setItem(TOOLBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+  }
+  collapseToolbarBtn.addEventListener('click', ()=> setToolbarCollapsed(true));
+  setToolbarCollapsed(localStorage.getItem(TOOLBAR_COLLAPSED_KEY) === '1');
+
+  // Active tool tracking (reflected in the toolbar and the collapsed pill)
+  function updateCollapsedIndicator(){
+    const activeBtn = toolbar.querySelector('.tool-btn.active');
+    collapsedView.innerHTML = activeBtn ? activeBtn.innerHTML : 'Aa';
+  }
+
+  function updateActiveStates(){
+    ['bold','italic','underline','strikeThrough','insertUnorderedList','insertOrderedList'].forEach(cmd=>{
+      const btn = toolbar.querySelector(`[data-cmd="${cmd}"]`);
+      if(!btn) return;
+      let state = false;
+      try{ state = document.queryCommandState(cmd); }catch(e){}
+      btn.classList.toggle('active', state);
+    });
+    let blockVal = '';
+    try{ blockVal = (document.queryCommandValue('formatBlock') || '').toLowerCase(); }catch(e){}
+    toolbar.querySelectorAll('[data-block]').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.block.toLowerCase() === blockVal);
+    });
+    updateCollapsedIndicator();
+  }
+
+  document.addEventListener('selectionchange', ()=>{
+    const sel = window.getSelection();
+    if(sel && sel.anchorNode && editor.contains(sel.anchorNode)){
+      updateActiveStates();
+      saveSelection();
+    }
+  });
+
+  // Options menu (theme switcher) - lives on the Home screen
+  const THEME_KEY = 'notionish_theme';
+  const optionsBtn = document.getElementById('options-btn');
+  const optionsMenu = document.getElementById('options-menu');
+  const viewOptions = document.querySelectorAll('#options-menu .view-option');
+
+  function applyTheme(theme){
+    if(theme === 'light'){
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    localStorage.setItem(THEME_KEY, theme);
+    viewOptions.forEach(opt=>{
+      opt.classList.toggle('selected', opt.dataset.theme === theme);
+    });
+    optionsBtn.classList.toggle('active', theme !== 'light');
+  }
+
+  optionsBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    optionsMenu.classList.toggle('open');
+  });
+
+  viewOptions.forEach(opt=>{
+    opt.addEventListener('click', ()=>{
+      applyTheme(opt.dataset.theme);
+      optionsMenu.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('click', (e)=>{
+    if(!optionsMenu.contains(e.target) && e.target !== optionsBtn){
+      optionsMenu.classList.remove('open');
+    }
+  });
+
+  applyTheme(localStorage.getItem(THEME_KEY) || 'light');
+
+  // Events
+  document.getElementById('new-btn').addEventListener('click', createDoc);
+  document.getElementById('empty-new-btn').addEventListener('click', createDoc);
+  homeNewBtn.addEventListener('click', createDoc);
+  homeBtn.addEventListener('click', showHome);
+
+  searchInput.addEventListener('input', ()=> renderList(searchInput.value));
+
+  titleInput.addEventListener('input', scheduleSave);
+  editor.addEventListener('input', scheduleSave);
+
+  function applyFontSize(){
+    let n = parseInt(fontSizeInput.value, 10);
+    if(isNaN(n)) n = 16;
+    n = Math.max(6, Math.min(120, n));
+    fontSizeInput.value = n;
+    const px = n + 'px';
+    editor.style.fontSize = px;
+    const doc = currentDoc();
+    if(doc){ doc.fontSize = px; }
+    scheduleSave();
+  }
+
+  fontSizeInput.addEventListener('change', applyFontSize);
+  fontSizeInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); applyFontSize(); editor.focus(); }
+  });
+
+  let savedRange = null;
+  function saveSelection(){
+    const sel = window.getSelection();
+    if(sel && sel.rangeCount && editor.contains(sel.anchorNode)){
+      savedRange = sel.getRangeAt(0).cloneRange();
+    }
+  }
+  function restoreSelection(){
+    if(!savedRange) return;
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+
+  insertImageBtn.addEventListener('click', ()=>{
+    saveSelection();
+    imageFileInput.value = '';
+    imageFileInput.click();
+  });
+  imageFileInput.addEventListener('change', ()=>{
+    const file = imageFileInput.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      editor.focus();
+      restoreSelection();
+      document.execCommand('insertHTML', false, `<img src="${reader.result}" class="doc-img" alt="">`);
+      scheduleSave();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  toolbar.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.tool-btn[data-cmd], .tool-btn[data-block]');
+    if(!btn) return;
+    editor.focus();
+    if(btn.dataset.cmd){
+      document.execCommand(btn.dataset.cmd, false, null);
+    } else if(btn.dataset.block){
+      document.execCommand('formatBlock', false, btn.dataset.block);
+    }
+    updateActiveStates();
+    scheduleSave();
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if((e.metaKey || e.ctrlKey) && e.key === 'n'){
+      e.preventDefault();
+      createDoc();
+    }
+  });
+
+  // ---------- Master Bar ----------
+  const masterBar = document.getElementById('master-bar');
+  const mbItems = document.querySelectorAll('.mb-item');
+  const mbDropdowns = document.querySelectorAll('.mb-dropdown');
+  let mbMenuOpen = false;
+
+  function closeAllMbMenus(){
+    mbDropdowns.forEach(d=> d.classList.remove('open'));
+    mbItems.forEach(i=> i.classList.remove('active'));
+    mbMenuOpen = false;
+  }
+  function updateMasterBarVisibility(y){
+    if(mbMenuOpen || y <= 8 || masterBar.matches(':hover')){
+      masterBar.classList.add('visible');
+    } else if(!masterBar.matches(':hover')){
+      masterBar.classList.remove('visible');
+    }
+  }
+  document.addEventListener('mousemove', (e)=> updateMasterBarVisibility(e.clientY));
+  document.addEventListener('mouseleave', ()=>{ if(!mbMenuOpen) masterBar.classList.remove('visible'); });
+  masterBar.addEventListener('mouseleave', ()=>{ if(!mbMenuOpen) masterBar.classList.remove('visible'); });
+
+  mbItems.forEach(item=>{
+    item.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const menu = document.getElementById(item.dataset.menu);
+      const isOpen = menu.classList.contains('open');
+      closeAllMbMenus();
+      if(!isOpen){
+        menu.classList.add('open');
+        item.classList.add('active');
+        mbMenuOpen = true;
+        masterBar.classList.add('visible');
+        refreshFileMenuState();
+      }
+    });
+  });
+  document.addEventListener('click', (e)=>{
+    if(!masterBar.contains(e.target)) closeAllMbMenus();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') closeAllMbMenus();
+  });
+
+  function refreshFileMenuState(){
+    const hasDoc = !!activeId;
+    document.querySelectorAll('#file-menu [data-action]').forEach(btn=>{
+      if(btn.dataset.action !== 'close'){
+        btn.disabled = !hasDoc;
+        btn.toggleAttribute('disabled', !hasDoc);
+      }
+    });
+  }
+
+  // ---------- File menu actions ----------
+  function doSaveNow(){
+    const doc = currentDoc();
+    if(!doc) return;
+    doc.title = titleInput.value.trim();
+    doc.content = editor.innerHTML;
+    doc.updatedAt = Date.now();
+    persist();
+    saveStatus.className = 'saved';
+    saveStatus.title = 'Saved';
+    saveStatus.innerHTML = ICON_SAVED;
+    renderList(searchInput.value);
+  }
+
+  function duplicateDoc(id){
+    const src = docs.find(d=>d.id === id);
+    if(!src) return null;
+    const copy = {
+      ...src,
+      id: uid(),
+      title: (src.title || 'Untitled') + ' (copy)',
+      pinned: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    docs.push(copy);
+    persist();
+    renderList(searchInput.value);
+    renderHomeGrid();
+    return copy;
+  }
+
+  const exportOverlay = document.getElementById('export-overlay');
+  const exportCancelBtn = document.getElementById('export-cancel');
+  function openExportModal(){
+    if(!activeId) return;
+    exportOverlay.classList.add('open');
+  }
+  function closeExportModal(){
+    exportOverlay.classList.remove('open');
+  }
+  exportCancelBtn.addEventListener('click', closeExportModal);
+  exportOverlay.addEventListener('click', (e)=>{
+    if(e.target === exportOverlay) closeExportModal();
+  });
+  exportOverlay.querySelectorAll('[data-format]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(!activeId) return;
+      if(btn.dataset.format === 'html') downloadDoc(activeId);
+      else downloadDocAsText(activeId);
+      closeExportModal();
+    });
+  });
+
+  function downloadDocAsText(id){
+    const doc = docs.find(d=>d.id === id);
+    if(!doc) return;
+    const title = doc.title || 'Untitled';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = doc.content || '';
+    const text = tmp.textContent || '';
+    const blob = new Blob([text], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[\\/:*?"<>|]/g, '').trim() || 'untitled'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById('file-menu').addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-action]');
+    if(!btn || btn.disabled) return;
+    const action = btn.dataset.action;
+    if(action !== 'close' && !activeId) return;
+    closeAllMbMenus();
+    if(action === 'save') doSaveNow();
+    else if(action === 'save-as'){
+      renameMode = 'saveas';
+      openRenameModal(activeId, editor.innerHTML);
+    }
+    else if(action === 'duplicate'){
+      const copy = duplicateDoc(activeId);
+      if(copy) openDoc(copy.id);
+    }
+    else if(action === 'export') openExportModal();
+    else if(action === 'close') showHome();
+  });
+
+  // ---------- Window menu actions ----------
+  const splitPane = document.getElementById('split-pane');
+  const splitDocSelect = document.getElementById('split-doc-select');
+  const splitEditor = document.getElementById('split-editor');
+  const splitCloseBtn = document.getElementById('split-close-btn');
+  let splitDocId = null;
+
+  function populateSplitSelect(){
+    splitDocSelect.innerHTML = '';
+    sortDocs(docs).forEach(doc=>{
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = doc.title || 'Untitled';
+      splitDocSelect.appendChild(opt);
+    });
+  }
+  function openSplitDoc(id){
+    const doc = docs.find(d=>d.id === id);
+    if(!doc) return;
+    splitDocId = id;
+    splitEditor.innerHTML = doc.content || '';
+  }
+  function toggleSplitView(forceOpen){
+    const willOpen = forceOpen !== undefined ? forceOpen : !splitPane.classList.contains('open');
+    if(willOpen){
+      if(!docs.length) return;
+      populateSplitSelect();
+      const other = docs.find(d=> d.id !== activeId);
+      const targetId = (other || docs[0]).id;
+      splitDocSelect.value = targetId;
+      openSplitDoc(targetId);
+      splitPane.classList.add('open');
+    } else {
+      splitPane.classList.remove('open');
+      splitDocId = null;
+    }
+  }
+  splitDocSelect.addEventListener('change', ()=> openSplitDoc(splitDocSelect.value));
+  splitEditor.addEventListener('input', ()=>{
+    const doc = docs.find(d=>d.id === splitDocId);
+    if(doc){
+      doc.content = splitEditor.innerHTML;
+      doc.updatedAt = Date.now();
+      persist();
+      renderList(searchInput.value);
+      renderHomeGrid();
+    }
+  });
+  splitCloseBtn.addEventListener('click', ()=> toggleSplitView(false));
+
+  function toggleFullScreen(){
+    if(!document.fullscreenElement){
+      document.documentElement.requestFullscreen().catch(()=>{});
+    } else if(document.exitFullscreen){
+      document.exitFullscreen().catch(()=>{});
+    }
+  }
+
+  function resetAllToolsAndBars(){
+    setToolbarPinned(false);
+    setToolbarCollapsed(false);
+    applyToolbarPos(DEFAULT_TOOLBAR_POS.x, DEFAULT_TOOLBAR_POS.y);
+    localStorage.setItem(TOOLBAR_POS_KEY, JSON.stringify(DEFAULT_TOOLBAR_POS));
+    setSidebarCollapsed(false);
+    applySidebarPos(DEFAULT_SIDEBAR_POS.x, DEFAULT_SIDEBAR_POS.y);
+    localStorage.setItem(SIDEBAR_POS_KEY, JSON.stringify(DEFAULT_SIDEBAR_POS));
+    toggleSplitView(false);
+  }
+
+  document.getElementById('window-menu').addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    const action = btn.dataset.action;
+    closeAllMbMenus();
+    if(action === 'split') toggleSplitView();
+    else if(action === 'fullscreen') toggleFullScreen();
+    else if(action === 'reset-all') resetAllToolsAndBars();
+  });
+
+  // ---------- PWA ----------
+  if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+    try{
+      const swCode = "self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',()=>{});";
+      const swBlob = new Blob([swCode], {type:'application/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+    }catch(e){}
+  }
+
+  // Init
+  load();
+  renderList('');
+  showHome();
+})();
+</script>
+</body>
+</html>

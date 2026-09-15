@@ -254,7 +254,8 @@
     border:1px solid transparent;
     box-shadow:var(--shadow-sm);
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-    min-height:96px;
+    height:112px;
+    overflow:hidden;
   }
   .doc-item:hover{
     border-color:var(--border);
@@ -429,7 +430,8 @@
     transition:transform .15s var(--ease-fast), box-shadow .15s var(--ease-fast), border-color .15s var(--ease-fast);
     display:flex;
     flex-direction:column;
-    min-height:104px;
+    height:128px;
+    overflow:hidden;
   }
   .home-card:hover{
     transform:translateY(-2px);
@@ -449,6 +451,7 @@
     font-size:12.5px;
     line-height:1.45;
     flex:1;
+    min-height:0;
     display:-webkit-box;
     -webkit-line-clamp:3;
     -webkit-box-orient:vertical;
@@ -492,10 +495,11 @@
     color:var(--text-mid);
     line-height:1.4;
     display:-webkit-box;
-    -webkit-line-clamp:4;
+    -webkit-line-clamp:3;
     -webkit-box-orient:vertical;
     overflow:hidden;
     flex:1;
+    min-height:0;
   }
   .doc-preview.empty{ color:var(--text-dim); font-style:italic; }
   .doc-meta{

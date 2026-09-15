@@ -91,8 +91,8 @@
   #sidebar-wrap.dragging #sidebar-collapsed-view{ transition:none; }
 
   #sidebar{
-    width:340px;
-    height:min(760px, calc(100vh - 32px));
+    width:var(--sidebar-w, 340px);
+    height:var(--sidebar-h, min(760px, calc(100vh - 32px)));
     background:var(--bg-sidebar);
     backdrop-filter:blur(22px) saturate(1.4);
     -webkit-backdrop-filter:blur(22px) saturate(1.4);
@@ -102,9 +102,36 @@
     display:flex;
     flex-direction:column;
     min-width:0;
+    position:relative;
     transform-origin:top left;
     transition:transform .3s var(--ease), opacity .22s var(--ease);
   }
+  #sidebar-wrap.resizing #sidebar{ transition:none; }
+  #sidebar-resize-handle{
+    position:absolute;
+    right:0;
+    bottom:0;
+    width:20px;
+    height:20px;
+    cursor:nwse-resize;
+    z-index:5;
+    touch-action:none;
+  }
+  #sidebar-resize-handle::after{
+    content:"";
+    position:absolute;
+    right:5px;
+    bottom:5px;
+    width:9px;
+    height:9px;
+    border-right:2px solid var(--text-dim);
+    border-bottom:2px solid var(--text-dim);
+    border-radius:0 0 2px 0;
+    opacity:.55;
+    transition:opacity .15s ease;
+  }
+  #sidebar-resize-handle:hover::after{ opacity:1; }
+  #sidebar-wrap.collapsed #sidebar-resize-handle{ display:none; }
   #sidebar-wrap.collapsed #sidebar{
     transform:scale(.94);
     opacity:0;
@@ -174,7 +201,7 @@
     gap:2px;
     flex-shrink:0;
   }
-  #collapse-btn, #new-btn{
+  #collapse-btn, #new-btn, #import-btn{
     border:none;
     background:none;
     cursor:pointer;
@@ -188,7 +215,8 @@
     justify-content:center;
     transition:background .15s ease, color .15s ease;
   }
-  #collapse-btn:hover, #new-btn:hover{ background:var(--hover); color:var(--text); }
+  #collapse-btn:hover, #new-btn:hover, #import-btn:hover{ background:var(--hover); color:var(--text); }
+  #import-btn svg{ width:15px; height:15px; }
 
   #search-box{
     margin:4px 14px 10px 14px;
@@ -1035,6 +1063,7 @@
       </div>
       <div id="doc-list"></div>
       <div id="sidebar-footer"><span id="doc-count">0 documents</span></div>
+      <div id="sidebar-resize-handle" title="Drag to resize"></div>
     </div>
     <button id="sidebar-collapsed-view" title="Expand library">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
@@ -1581,6 +1610,74 @@
       setSidebarCollapsed(!sidebarWrap.classList.contains('collapsed'));
     }
   });
+
+  // Sidebar resizing (bottom-right corner handle)
+  const sidebarResizeHandle = document.getElementById('sidebar-resize-handle');
+  const SIDEBAR_SIZE_KEY = 'notionish_sidebar_size';
+  const SIDEBAR_MIN_W = 260;
+  const SIDEBAR_MIN_H = 240;
+  let szResizing = false, szStartX = 0, szStartY = 0, szStartW = 0, szStartH = 0;
+
+  function sidebarMaxSize(){
+    const rect = sidebarWrap.getBoundingClientRect();
+    return {
+      maxW: window.innerWidth - rect.left - 8,
+      maxH: window.innerHeight - rect.top - 8
+    };
+  }
+  function applySidebarSize(w, h){
+    document.documentElement.style.setProperty('--sidebar-w', w + 'px');
+    document.documentElement.style.setProperty('--sidebar-h', h + 'px');
+  }
+  function loadSidebarSize(){
+    try{
+      const raw = localStorage.getItem(SIDEBAR_SIZE_KEY);
+      if(raw){
+        const { w, h } = JSON.parse(raw);
+        if(w && h) applySidebarSize(w, h);
+      }
+    }catch(e){}
+  }
+
+  sidebarResizeHandle.addEventListener('mousedown', (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = document.getElementById('sidebar').getBoundingClientRect();
+    szStartX = e.clientX;
+    szStartY = e.clientY;
+    szStartW = rect.width;
+    szStartH = rect.height;
+    szResizing = true;
+    sidebarWrap.classList.add('resizing');
+  });
+
+  document.addEventListener('mousemove', (e)=>{
+    if(!szResizing) return;
+    const { maxW, maxH } = sidebarMaxSize();
+    let w = szStartW + (e.clientX - szStartX);
+    let h = szStartH + (e.clientY - szStartY);
+    w = Math.min(Math.max(w, SIDEBAR_MIN_W), Math.max(maxW, SIDEBAR_MIN_W));
+    h = Math.min(Math.max(h, SIDEBAR_MIN_H), Math.max(maxH, SIDEBAR_MIN_H));
+    applySidebarSize(w, h);
+  });
+
+  document.addEventListener('mouseup', ()=>{
+    if(!szResizing) return;
+    szResizing = false;
+    sidebarWrap.classList.remove('resizing');
+    const rect = document.getElementById('sidebar').getBoundingClientRect();
+    localStorage.setItem(SIDEBAR_SIZE_KEY, JSON.stringify({ w: rect.width, h: rect.height }));
+  });
+
+  window.addEventListener('resize', ()=>{
+    const { maxW, maxH } = sidebarMaxSize();
+    const rect = document.getElementById('sidebar').getBoundingClientRect();
+    const w = Math.min(rect.width, Math.max(maxW, SIDEBAR_MIN_W));
+    const h = Math.min(rect.height, Math.max(maxH, SIDEBAR_MIN_H));
+    if(w !== rect.width || h !== rect.height) applySidebarSize(w, h);
+  });
+
+  loadSidebarSize();
 
   // Floating draggable toolbar
   const TOOLBAR_POS_KEY = 'notionish_toolbar_pos';
@@ -2361,6 +2458,9 @@
     setSidebarCollapsed(false);
     applySidebarPos(DEFAULT_SIDEBAR_POS.x, DEFAULT_SIDEBAR_POS.y);
     localStorage.setItem(SIDEBAR_POS_KEY, JSON.stringify(DEFAULT_SIDEBAR_POS));
+    document.documentElement.style.removeProperty('--sidebar-w');
+    document.documentElement.style.removeProperty('--sidebar-h');
+    localStorage.removeItem('notionish_sidebar_size');
     toggleSplitView(false);
   }
 

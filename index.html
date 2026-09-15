@@ -338,7 +338,7 @@
     font-size:14.5px;
     cursor:pointer;
     width:100%;
-    margin-bottom:36px;
+    margin-bottom:14px;
     box-shadow:var(--shadow-sm);
     transition:border-color .15s var(--ease-fast), background .15s var(--ease-fast), color .15s var(--ease-fast);
   }
@@ -356,6 +356,28 @@
     font-size:16px;
     flex-shrink:0;
   }
+  #home-import-btn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    color:var(--text-mid);
+    border-radius:12px;
+    padding:12px 18px;
+    font-size:13.5px;
+    cursor:pointer;
+    width:100%;
+    margin-bottom:36px;
+    box-shadow:var(--shadow-sm);
+    transition:border-color .15s var(--ease-fast), background .15s var(--ease-fast), color .15s var(--ease-fast);
+  }
+  #home-import-btn:hover{
+    border-color:var(--accent);
+    color:var(--text);
+    background:var(--hover);
+  }
+  #home-import-btn svg{ width:16px; height:16px; flex-shrink:0; }
   .home-section-title{
     font-size:12px;
     text-transform:uppercase;
@@ -794,7 +816,8 @@
   /* Delete confirm modal */
   #confirm-overlay,
   #rename-overlay,
-  #export-overlay{
+  #export-overlay,
+  #import-error-overlay{
     position:fixed;
     inset:0;
     background:rgba(0,0,0,.28);
@@ -806,7 +829,8 @@
   }
   #confirm-overlay.open,
   #rename-overlay.open,
-  #export-overlay.open{ display:flex; }
+  #export-overlay.open,
+  #import-error-overlay.open{ display:flex; }
   .modal-box{
     background:var(--bg-card);
     border:1px solid var(--border);
@@ -971,6 +995,8 @@
       <button class="view-option" data-action="duplicate">Duplicate this file</button>
       <button class="view-option" data-action="export">Export as...</button>
       <div class="mb-sep"></div>
+      <button class="view-option" data-action="import" data-no-doc-required="1">Import file...</button>
+      <div class="mb-sep"></div>
       <button class="view-option" data-action="close">Close file</button>
     </div>
   </div>
@@ -991,6 +1017,9 @@
         <div id="sidebar-drag-handle" title="Drag to move">⠿</div>
         <h1>Library</h1>
         <div id="sidebar-header-actions">
+          <button id="import-btn" title="Import file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+          </button>
           <button id="new-btn" title="New document">+</button>
           <button id="collapse-btn" title="Collapse sidebar">⟨</button>
         </div>
@@ -1077,6 +1106,10 @@
           <span class="plus-circle">+</span>
           <span>New document</span>
         </button>
+        <button id="home-import-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+          <span>Import file (.html / .txt)</span>
+        </button>
         <div class="home-section-title">Recent</div>
         <div id="home-grid"></div>
       </div>
@@ -1140,6 +1173,15 @@
   </div>
 </div>
 
+<div id="import-error-overlay">
+  <div class="modal-box">
+    <div class="modal-message" id="import-error-message">Couldn't import that file.</div>
+    <div class="modal-actions">
+      <button id="import-error-ok">OK</button>
+    </div>
+  </div>
+</div>
+
 <div id="doc-context-menu">
   <button class="view-option" data-action="download">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
@@ -1166,6 +1208,8 @@
   </button>
 </div>
 
+<input type="file" id="import-file-input" accept=".html,.htm,.txt" style="display:none;">
+
 <script>
 (function(){
   const STORAGE_KEY = 'notionish_docs_v1';
@@ -1191,6 +1235,9 @@
   const homeGrid = document.getElementById('home-grid');
   const homeBtn = document.getElementById('home-btn');
   const homeNewBtn = document.getElementById('home-new-btn');
+  const homeImportBtn = document.getElementById('home-import-btn');
+  const importBtn = document.getElementById('import-btn');
+  const importFileInput = document.getElementById('import-file-input');
   const appEl = document.getElementById('app');
 
   function load(){
@@ -1968,6 +2015,138 @@
       e.preventDefault();
       createDoc();
     }
+    if((e.metaKey || e.ctrlKey) && e.key === 'o'){
+      e.preventDefault();
+      openImportDialog();
+    }
+  });
+
+  // ---------- Import file (.html / .htm / .txt) ----------
+  const importErrorOverlay = document.getElementById('import-error-overlay');
+  const importErrorMessage = document.getElementById('import-error-message');
+  const importErrorOkBtn = document.getElementById('import-error-ok');
+
+  function showImportError(msg){
+    importErrorMessage.textContent = msg;
+    importErrorOverlay.classList.add('open');
+  }
+  importErrorOkBtn.addEventListener('click', ()=> importErrorOverlay.classList.remove('open'));
+  importErrorOverlay.addEventListener('click', (e)=>{
+    if(e.target === importErrorOverlay) importErrorOverlay.classList.remove('open');
+  });
+
+  function openImportDialog(){
+    importFileInput.value = '';
+    importFileInput.click();
+  }
+
+  function sanitizeImportedHtml(rawHtml){
+    // Parse in a detached document, strip anything executable/unsafe,
+    // and keep only body content plus a pulled-out <h1> as the title.
+    const parser = new DOMParser();
+    const parsedDoc = parser.parseFromString(rawHtml, 'text/html');
+    const body = parsedDoc.body || parsedDoc.createElement('body');
+
+    // Remove scripts, styles, and event-handler attributes / javascript: URLs
+    body.querySelectorAll('script, style, link, iframe, object, embed').forEach(el => el.remove());
+    body.querySelectorAll('*').forEach(el=>{
+      [...el.attributes].forEach(attr=>{
+        const name = attr.name.toLowerCase();
+        const val = attr.value.trim().toLowerCase();
+        if(name.startsWith('on') || (name === 'href' && val.startsWith('javascript:')) || (name === 'src' && val.startsWith('javascript:'))){
+          el.removeAttribute(attr.name);
+        }
+      });
+    });
+
+    // Title: prefer the first H1 (our own export format writes one), else <title>
+    let title = '';
+    const h1 = body.querySelector('h1');
+    if(h1){
+      title = h1.textContent.trim();
+      h1.remove();
+    } else if(parsedDoc.title){
+      title = parsedDoc.title.trim();
+    }
+
+    return { title, content: body.innerHTML.trim() };
+  }
+
+  function textToHtml(raw){
+    return raw.split(/\r\n|\r|\n/).map(line=>{
+      const esc = escapeHtml(line);
+      return esc ? `<div>${esc}</div>` : '<div><br></div>';
+    }).join('');
+  }
+
+  function handleImportedFile(file){
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const isHtml = ext === 'html' || ext === 'htm';
+    const isText = ext === 'txt' || (!isHtml && file.type.startsWith('text/'));
+
+    if(!isHtml && !isText){
+      showImportError(`"${file.name}" isn't a supported file type. Import .html or .txt files.`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = ()=> showImportError(`Couldn't read "${file.name}".`);
+    reader.onload = ()=>{
+      const raw = String(reader.result || '');
+      let title, content;
+      const fallbackTitle = file.name.replace(/\.[^/.]+$/, '');
+      try{
+        if(isHtml){
+          const parsed = sanitizeImportedHtml(raw);
+          title = parsed.title || fallbackTitle;
+          content = parsed.content;
+        } else {
+          title = fallbackTitle;
+          content = textToHtml(raw);
+        }
+      }catch(err){
+        showImportError(`Couldn't import "${file.name}": ${err.message || 'unknown error'}`);
+        return;
+      }
+
+      const newDoc = {
+        id: uid(),
+        title: title || 'Untitled',
+        content: content || '',
+        fontSize: '16px',
+        pinned: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      docs.push(newDoc);
+      persist();
+      renderList(searchInput.value);
+      renderHomeGrid();
+      openDoc(newDoc.id);
+    };
+    reader.readAsText(file);
+  }
+
+  importFileInput.addEventListener('change', ()=>{
+    const file = importFileInput.files[0];
+    if(file) handleImportedFile(file);
+  });
+
+  importBtn.addEventListener('click', openImportDialog);
+  homeImportBtn.addEventListener('click', openImportDialog);
+
+  // Drag-and-drop import onto the home screen / editor
+  ['dragover','drop'].forEach(evt=>{
+    document.addEventListener(evt, (e)=>{
+      if(e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')){
+        e.preventDefault();
+      }
+    });
+  });
+  document.addEventListener('drop', (e)=>{
+    if(!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    handleImportedFile(e.dataTransfer.files[0]);
   });
 
   // ---------- Master Bar ----------
@@ -2017,7 +2196,7 @@
   function refreshFileMenuState(){
     const hasDoc = !!activeId;
     document.querySelectorAll('#file-menu [data-action]').forEach(btn=>{
-      if(btn.dataset.action !== 'close'){
+      if(btn.dataset.action !== 'close' && !btn.dataset.noDocRequired){
         btn.disabled = !hasDoc;
         btn.toggleAttribute('disabled', !hasDoc);
       }
@@ -2100,7 +2279,7 @@
     const btn = e.target.closest('[data-action]');
     if(!btn || btn.disabled) return;
     const action = btn.dataset.action;
-    if(action !== 'close' && !activeId) return;
+    if(action !== 'close' && !btn.dataset.noDocRequired && !activeId) return;
     closeAllMbMenus();
     if(action === 'save') doSaveNow();
     else if(action === 'save-as'){
@@ -2112,6 +2291,7 @@
       if(copy) openDoc(copy.id);
     }
     else if(action === 'export') openExportModal();
+    else if(action === 'import') openImportDialog();
     else if(action === 'close') showHome();
   });
 

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Notes</title>
+<meta name="version" content="6.7">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#707a3d">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2049,6 +2050,203 @@
   titleInput.addEventListener('input', scheduleSave);
   editor.addEventListener('input', scheduleSave);
 
+  // ---------- Rich paste (v6.7): keep bold / italic / underline / strike ----------
+  // Reads the clipboard's HTML, converts style-based formatting (Google Docs,
+  // Word, web pages, LMS platforms) into semantic <b>/<i>/<u>/<s> tags, drops
+  // colors / fonts / sizes / backgrounds, and inserts the clean result.
+  const RP_BLOCK = new Set(['P','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','PRE','UL','OL','LI','DIV','SECTION','ARTICLE','HEADER','FOOTER','MAIN','ASIDE','NAV','TABLE','THEAD','TBODY','TFOOT','TR','TD','TH','FIGURE','FIGCAPTION','HR']);
+  const RP_SKIP  = new Set(['SCRIPT','STYLE','LINK','META','TITLE','HEAD','IFRAME','OBJECT','EMBED','NOSCRIPT','TEMPLATE','svg','SVG','FORM','INPUT','BUTTON','SELECT','TEXTAREA']);
+
+  function rpFormat(el, fmt){
+    const f = Object.assign({}, fmt);
+    const tag = el.tagName;
+    const st = el.style || {};
+    const fw = (st.fontWeight || '').toLowerCase();
+    const fs = (st.fontStyle || '').toLowerCase();
+    const td = ((st.textDecorationLine || '') + ' ' + (st.textDecoration || '')).toLowerCase();
+    const weightNum = parseInt(fw, 10);
+
+    // Bold: <b>/<strong> unless explicitly "normal" (Google Docs wraps everything in <b style="font-weight:normal">)
+    if(tag === 'B' || tag === 'STRONG') f.b = !(fw === 'normal' || weightNum < 600);
+    if(fw === 'bold' || fw === 'bolder' || weightNum >= 600) f.b = true;
+    if(fw === 'normal' || weightNum < 600) { if(tag !== 'B' && tag !== 'STRONG') f.b = false; }
+
+    if(tag === 'I' || tag === 'EM' || tag === 'CITE') f.i = !(fs === 'normal');
+    if(fs === 'italic' || fs === 'oblique') f.i = true;
+    else if(fs === 'normal' && tag !== 'I' && tag !== 'EM') f.i = false;
+
+    if(tag === 'U' || tag === 'INS') f.u = true;
+    if(td.includes('underline')) f.u = true;
+
+    if(tag === 'S' || tag === 'STRIKE' || tag === 'DEL') f.s = true;
+    if(td.includes('line-through')) f.s = true;
+
+    // Word / Docs: <span style="text-decoration:none"> cancels inherited underline
+    if(/\bnone\b/.test(td) && !td.includes('underline') && !td.includes('line-through') && tag !== 'A'){
+      f.u = false; f.s = false;
+    }
+    return f;
+  }
+
+  function rpWrapText(text, f){
+    let node = document.createTextNode(text);
+    if(f.s){ const e = document.createElement('s'); e.appendChild(node); node = e; }
+    if(f.u){ const e = document.createElement('u'); e.appendChild(node); node = e; }
+    if(f.i){ const e = document.createElement('i'); e.appendChild(node); node = e; }
+    if(f.b){ const e = document.createElement('b'); e.appendChild(node); node = e; }
+    return node;
+  }
+
+  function rpHasBlockChild(el){
+    for(const c of el.children){ if(RP_BLOCK.has(c.tagName)) return true; }
+    return false;
+  }
+
+  function rpWalk(node, fmt, out, inPre){
+    if(node.nodeType === 3){
+      let t = node.nodeValue || '';
+      if(!inPre) t = t.replace(/\s*[\r\n]+\s*/g, ' ').replace(/[ \t]{2,}/g, ' ');
+      if(!t) return;
+      out.appendChild(rpWrapText(t, fmt));
+      return;
+    }
+    if(node.nodeType !== 1) return;
+    const el = node;
+    const tag = el.tagName;
+    if(RP_SKIP.has(tag)) return;
+    if(el.getAttribute && el.getAttribute('aria-hidden') === 'true') return;
+
+    const f = rpFormat(el, fmt);
+
+    if(tag === 'BR'){ out.appendChild(document.createElement('br')); return; }
+    if(tag === 'HR'){ out.appendChild(document.createElement('hr')); return; }
+
+    if(tag === 'IMG'){
+      const src = el.getAttribute('src') || '';
+      if(/^(https?:|data:image\/)/i.test(src)){
+        const img = document.createElement('img');
+        img.setAttribute('src', src);
+        img.className = 'doc-img';
+        img.setAttribute('alt', el.getAttribute('alt') || '');
+        out.appendChild(img);
+      }
+      return;
+    }
+
+    if(tag === 'A'){
+      const href = (el.getAttribute('href') || '').trim();
+      if(/^(https?:|mailto:|tel:)/i.test(href)){
+        const a = document.createElement('a');
+        a.setAttribute('href', href);
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+        el.childNodes.forEach(c => rpWalk(c, f, a, inPre));
+        if(a.childNodes.length) out.appendChild(a);
+      } else {
+        el.childNodes.forEach(c => rpWalk(c, f, out, inPre));
+      }
+      return;
+    }
+
+    if(tag === 'SUB' || tag === 'SUP'){
+      const e = document.createElement(tag.toLowerCase());
+      el.childNodes.forEach(c => rpWalk(c, f, e, inPre));
+      if(e.childNodes.length) out.appendChild(e);
+      return;
+    }
+
+    if(tag === 'UL' || tag === 'OL'){
+      const list = document.createElement(tag.toLowerCase());
+      el.childNodes.forEach(c => {
+        if(c.nodeType === 3 && !/\S/.test(c.nodeValue)) return;
+        rpWalk(c, f, list, inPre);
+      });
+      if(list.childNodes.length) out.appendChild(list);
+      return;
+    }
+
+    if(tag === 'LI'){
+      const li = document.createElement('li');
+      el.childNodes.forEach(c => rpWalk(c, f, li, inPre));
+      // flatten <li><p>text</p></li> into <li>text</li>
+      if(li.children.length === 1 && li.firstElementChild.tagName === 'P' && li.childNodes.length === 1){
+        const p = li.firstElementChild;
+        while(p.firstChild) li.insertBefore(p.firstChild, p);
+        p.remove();
+      }
+      if(li.childNodes.length) out.appendChild(li);
+      return;
+    }
+
+    if(/^H[1-6]$/.test(tag) || tag === 'P' || tag === 'BLOCKQUOTE' || tag === 'PRE'){
+      const outTag = tag === 'PRE' ? 'p' : tag.toLowerCase();
+      if(tag === 'BLOCKQUOTE' && rpHasBlockChild(el)){
+        const bq = document.createElement('blockquote');
+        el.childNodes.forEach(c => {
+          if(c.nodeType === 3 && !/\S/.test(c.nodeValue)) return;
+          rpWalk(c, f, bq, inPre);
+        });
+        if(bq.childNodes.length) out.appendChild(bq);
+        return;
+      }
+      const e = document.createElement(outTag);
+      const ta = (el.style && el.style.textAlign || '').toLowerCase();
+      if(['center','right','justify'].includes(ta)) e.style.textAlign = ta;
+      el.childNodes.forEach(c => rpWalk(c, f, e, inPre || tag === 'PRE'));
+      if(e.childNodes.length) out.appendChild(e);
+      return;
+    }
+
+    if(RP_BLOCK.has(tag)){
+      // DIV / SECTION / TABLE / TR / TD ...: unwrap if it holds blocks, else make a paragraph
+      if(rpHasBlockChild(el)){
+        el.childNodes.forEach(c => {
+          if(c.nodeType === 3 && !/\S/.test(c.nodeValue)) return;
+          rpWalk(c, f, out, inPre);
+        });
+      } else {
+        const p = document.createElement('p');
+        const ta = (el.style && el.style.textAlign || '').toLowerCase();
+        if(['center','right','justify'].includes(ta)) p.style.textAlign = ta;
+        el.childNodes.forEach(c => rpWalk(c, f, p, inPre));
+        if(p.textContent.trim() || p.querySelector('img,br')) out.appendChild(p);
+      }
+      return;
+    }
+
+    // Inline (SPAN, FONT, MARK, CODE, LABEL ...): pass formatting through, drop everything else
+    el.childNodes.forEach(c => rpWalk(c, f, out, inPre));
+  }
+
+  function rpClean(html){
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const out = document.createElement('div');
+    const base = {b:false, i:false, u:false, s:false};
+    (doc.body || doc.documentElement).childNodes.forEach(c => rpWalk(c, base, out, false));
+    // remove empty inline wrappers
+    out.querySelectorAll('b,i,u,s,a,sub,sup').forEach(e => { if(!e.textContent && !e.querySelector('img,br')) e.remove(); });
+    // single paragraph pasted inside a line: insert inline instead of splitting the block
+    if(out.children.length === 1 && out.firstElementChild.tagName === 'P' && !out.firstElementChild.getAttribute('style') && out.childNodes.length === 1){
+      return out.firstElementChild.innerHTML;
+    }
+    return out.innerHTML;
+  }
+
+  function attachRichPaste(el){
+    el.addEventListener('paste', (e)=>{
+      const cd = e.clipboardData;
+      if(!cd) return;
+      const html = cd.getData('text/html');
+      if(!html || !/<\w+/.test(html)) return;      // plain text only: browser default
+      let clean = '';
+      try { clean = rpClean(html); } catch(err){ return; }
+      if(!clean || !clean.replace(/<[^>]*>/g,'').trim() && !/<img/i.test(clean)) return; // nothing usable: default
+      e.preventDefault();
+      document.execCommand('insertHTML', false, clean);
+    });
+  }
+  attachRichPaste(editor);
+
   function applyFontSize(){
     let n = parseInt(fontSizeInput.value, 10);
     if(isNaN(n)) n = 16;
@@ -2434,6 +2632,7 @@
     }
   }
   splitDocSelect.addEventListener('change', ()=> openSplitDoc(splitDocSelect.value));
+  attachRichPaste(splitEditor);
   splitEditor.addEventListener('input', ()=>{
     const doc = docs.find(d=>d.id === splitDocId);
     if(doc){
